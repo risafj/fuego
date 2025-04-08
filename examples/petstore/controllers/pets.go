@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"github.com/go-fuego/fuego"
-	"github.com/go-fuego/fuego/examples/petstore/models"
 	"github.com/go-fuego/fuego/option"
 	"github.com/go-fuego/fuego/param"
+
+	"github.com/go-fuego/fuego/examples/petstore/models"
 )
 
 // default pagination options
@@ -32,7 +33,11 @@ var _ error = PetsError{}
 func (e PetsError) Error() string { return e.Err.Error() }
 
 func (rs PetsResources) Routes(s *fuego.Server) {
-	petsGroup := fuego.Group(s, "/pets", option.Header("X-Header", "header description"))
+	// ✅️ middleware 1 gets called
+	petsGroup := fuego.Group(s, "/pets",
+		option.Header("X-Header", "header description"),
+		option.Middleware(TestMiddlewareOne),
+	)
 
 	fuego.Get(petsGroup, "/", rs.filterPets,
 		optionPagination,
@@ -47,7 +52,11 @@ func (rs PetsResources) Routes(s *fuego.Server) {
 		option.Description("Get all pets"),
 	)
 
-	fuego.Post(petsGroup, "/generic-response", rs.genericRequestAndResponse,
+	// ✅️ middleware 1, then 2 gets called
+	petsGroupTwo := fuego.Group(petsGroup, "",
+		option.Middleware(TestMiddlewareTwo),
+	)
+	fuego.Post(petsGroupTwo, "/generic-response", rs.genericRequestAndResponse,
 		option.Description("Generic request and response. Showcase Fuego's support for generic input & output."),
 	)
 
