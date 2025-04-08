@@ -33,10 +33,9 @@ var _ error = PetsError{}
 func (e PetsError) Error() string { return e.Err.Error() }
 
 func (rs PetsResources) Routes(s *fuego.Server) {
-	// ✅️ middleware 1 gets called
+	// ✅️ no middleware
 	petsGroup := fuego.Group(s, "/pets",
 		option.Header("X-Header", "header description"),
-		option.Middleware(TestMiddlewareOne),
 	)
 
 	fuego.Get(petsGroup, "/", rs.filterPets,
@@ -52,7 +51,7 @@ func (rs PetsResources) Routes(s *fuego.Server) {
 		option.Description("Get all pets"),
 	)
 
-	// ✅️ middleware 1, then 2 gets called
+	// ✅️ middleware 2 gets called
 	petsGroupTwo := fuego.Group(petsGroup, "",
 		option.Middleware(TestMiddlewareTwo),
 	)
