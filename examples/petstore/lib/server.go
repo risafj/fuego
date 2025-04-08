@@ -4,9 +4,10 @@ import (
 	"net/http"
 
 	"github.com/go-fuego/fuego"
+	"github.com/go-fuego/fuego/option"
+
 	controller "github.com/go-fuego/fuego/examples/petstore/controllers"
 	"github.com/go-fuego/fuego/examples/petstore/services"
-	"github.com/go-fuego/fuego/option"
 )
 
 type NoContent struct {

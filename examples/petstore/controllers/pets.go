@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"github.com/go-fuego/fuego"
-	"github.com/go-fuego/fuego/examples/petstore/models"
 	"github.com/go-fuego/fuego/option"
 	"github.com/go-fuego/fuego/param"
+
+	"github.com/go-fuego/fuego/examples/petstore/models"
 )
 
 // default pagination options
@@ -32,48 +33,57 @@ var _ error = PetsError{}
 func (e PetsError) Error() string { return e.Err.Error() }
 
 func (rs PetsResources) Routes(s *fuego.Server) {
-	petsGroup := fuego.Group(s, "/pets", option.Header("X-Header", "header description"))
-
-	fuego.Get(petsGroup, "/", rs.filterPets,
+	// apply middleware 1
+	petsGroupOne := fuego.Group(s, "/pets",
+		option.Header("X-Header", "header description"),
+		option.Middleware(TestMiddlewareOne),
+	)
+	// apply middleware 1 and 2
+	petsGroupTwo := fuego.Group(petsGroupOne, "",
+		option.Middleware(TestMiddlewareTwo),
+	)
+	// ✅️ middleware 1 is called as expected
+	fuego.Get(petsGroupOne, "/", rs.filterPets,
 		optionPagination,
 		option.Query("name", "Filter by name", param.Example("cat name", "felix"), param.Nullable()),
 		option.QueryInt("younger_than", "Only get pets younger than given age in years", param.Default(3)),
 		option.Description("Filter pets"),
 	)
-
-	fuego.Get(petsGroup, "/all", rs.getAllPets,
+	// ✅️ middleware 1 and 2 are called as expected
+	fuego.Get(petsGroupTwo, "/all", rs.getAllPets,
 		optionPagination,
 		option.Tags("my-tag"),
 		option.Description("Get all pets"),
 	)
-
-	fuego.Post(petsGroup, "/generic-response", rs.genericRequestAndResponse,
+	// ✅️ middleware 1 is called as expected
+	fuego.Post(petsGroupOne, "/generic-response", rs.genericRequestAndResponse,
 		option.Description("Generic request and response. Showcase Fuego's support for generic input & output."),
 	)
-
-	fuego.Get(petsGroup, "/by-age", rs.getAllPetsByAge,
+	// ❌️ middleware 1 and 2 should be called, but only middleware 1 is called
+	fuego.Get(petsGroupTwo, "/by-age", rs.getAllPetsByAge,
 		option.Description("Returns an array of pets grouped by age"),
 		option.Middleware(dummyMiddleware),
 	)
-	fuego.Post(petsGroup, "/", rs.postPets,
+
+	fuego.Post(petsGroupOne, "/", rs.postPets,
 		option.DefaultStatusCode(201),
 		option.AddResponse(409, "Conflict: Pet with the same name already exists", fuego.Response{Type: PetsError{}}),
 	)
 
-	fuego.Get(petsGroup, "/{id}", rs.getPets,
+	fuego.Get(petsGroupOne, "/{id}", rs.getPets,
 		option.OverrideDescription("Replace description with this sentence."),
 		option.OperationID("getPet"),
 		option.Path("id", "Pet ID", param.Example("example", "123")),
 	)
-	fuego.Get(petsGroup, "/by-name/{name}", rs.getPetByName)
-	fuego.Put(petsGroup, "/{id}", rs.putPets)
-	fuego.Put(petsGroup, "/json/{id}", rs.putPets,
+	fuego.Get(petsGroupOne, "/by-name/{name}", rs.getPetByName)
+	fuego.Put(petsGroupOne, "/{id}", rs.putPets)
+	fuego.Put(petsGroupOne, "/json/{id}", rs.putPets,
 		option.Summary("Update a pet with JSON-only body"),
 		option.RequestContentType("application/json"),
 	)
-	fuego.Delete(petsGroup, "/{id}", rs.deletePets)
+	fuego.Delete(petsGroupOne, "/{id}", rs.deletePets)
 
-	stdPetsGroup := fuego.Group(petsGroup, "/std")
+	stdPetsGroup := fuego.Group(petsGroupOne, "/std")
 
 	fuego.GetStd(stdPetsGroup, "/all", func(w http.ResponseWriter, r *http.Request) {
 		pets, err := rs.PetsService.GetAllPets()
