@@ -33,9 +33,13 @@ var _ error = PetsError{}
 func (e PetsError) Error() string { return e.Err.Error() }
 
 func (rs PetsResources) Routes(s *fuego.Server) {
-	// ✅️ no middleware
+	// apply no middleware
 	petsGroup := fuego.Group(s, "/pets",
 		option.Header("X-Header", "header description"),
+	)
+	// apply middleware 1
+	petsGroupWithMiddleware := fuego.Group(petsGroup, "",
+		option.Middleware(TestMiddlewareOne),
 	)
 
 	fuego.Get(petsGroup, "/", rs.filterPets,
@@ -45,17 +49,14 @@ func (rs PetsResources) Routes(s *fuego.Server) {
 		option.Description("Filter pets"),
 	)
 
-	fuego.Get(petsGroup, "/all", rs.getAllPets,
+	// ✅️ middleware is applied
+	fuego.Get(petsGroupWithMiddleware, "/all", rs.getAllPets,
 		optionPagination,
 		option.Tags("my-tag"),
 		option.Description("Get all pets"),
 	)
 
-	// ✅️ middleware 2 gets called
-	petsGroupTwo := fuego.Group(petsGroup, "",
-		option.Middleware(TestMiddlewareTwo),
-	)
-	fuego.Post(petsGroupTwo, "/generic-response", rs.genericRequestAndResponse,
+	fuego.Post(petsGroup, "/generic-response", rs.genericRequestAndResponse,
 		option.Description("Generic request and response. Showcase Fuego's support for generic input & output."),
 	)
 
@@ -63,7 +64,9 @@ func (rs PetsResources) Routes(s *fuego.Server) {
 		option.Description("Returns an array of pets grouped by age"),
 		option.Middleware(dummyMiddleware),
 	)
-	fuego.Post(petsGroup, "/", rs.postPets,
+
+	// ⚠️ middleware is not applied
+	fuego.Post(petsGroupWithMiddleware, "/", rs.postPets,
 		option.DefaultStatusCode(201),
 		option.AddResponse(409, "Conflict: Pet with the same name already exists", fuego.Response{Type: PetsError{}}),
 	)
